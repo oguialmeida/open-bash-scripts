@@ -1,428 +1,419 @@
 #!/bin/bash
-
-# Cores para output
+# Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Função para imprimir mensagens coloridas
+# Functions to print colored messages
 print_message() {
-    echo -e "${BLUE}[INFO]${NC} $1"
+echo -e "${BLUE}[INFO]${NC} $1"
 }
 
 print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
+echo -e "${GREEN}[SUCCESS]${NC} $1"
 }
 
 print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
+echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
 print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
+echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Função para verificar se o script está sendo executado como root
+# Function to check if script is being run as root
 check_root() {
-    if [[ $EUID -ne 0 ]]; then
-        print_error "Este script precisa ser executado como root!"
-        exit 1
-    fi
+if [[ $EUID -ne 0 ]]; then
+print_error "This script needs to be run as root!"
+exit 1
+fi
 }
 
-# Função para atualizar os pacotes do sistema
+# Function to update system packages
 update_packages() {
-    print_message "Atualizando lista de pacotes..."
-    apt-get update
-    
-    if [ $? -eq 0 ]; then
-        print_success "Lista de pacotes atualizada com sucesso!"
-    else
-        print_error "Falha ao atualizar lista de pacotes"
-        exit 1
-    fi
+print_message "Updating package list..."
+apt-get update
+if [ $? -eq 0 ]; then
+print_success "Package list updated successfully!"
+else
+print_error "Failed to update package list"
+exit 1
+fi
 
-    print_message "Atualizando pacotes do sistema..."
-    apt-get upgrade -y
-    
-    if [ $? -eq 0 ]; then
-        print_success "Pacotes atualizados com sucesso!"
-    else
-        print_error "Falha ao atualizar pacotes"
-        exit 1
-    fi
+print_message "Updating system packages..."
+apt-get upgrade -y
+if [ $? -eq 0 ]; then
+print_success "Packages updated successfully!"
+else
+print_error "Failed to update packages"
+exit 1
+fi
 }
 
-# Função para instalar o Docker
+# Function to install Docker
 install_docker() {
-    print_message "Verificando se o Docker já está instalado..."
-    
-    if command -v docker &> /dev/null; then
-        print_warning "Docker já está instalado. Pulando instalação..."
-        return 0
-    fi
+print_message "Checking if Docker is already installed..."
+if command -v docker &> /dev/null; then
+print_warning "Docker is already installed. Skipping installation..."
+return 0
+fi
 
-    print_message "Instalando dependências necessárias..."
-    apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
+print_message "Installing necessary dependencies..."
+apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
 
-    print_message "Adicionando repositório do Docker..."
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+print_message "Adding Docker repository..."
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
 
-    # Detecta a distribuição
-    DISTRO=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
-    CODENAME=$(lsb_release -cs)
+# Detect distribution
+DISTRO=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
+CODENAME=$(lsb_release -cs)
 
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/$DISTRO $CODENAME stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/$DISTRO $CODENAME stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-    print_message "Atualizando lista de pacotes após adição do repositório Docker..."
-    apt-get update
+print_message "Updating package list after adding Docker repository..."
+apt-get update
 
-    print_message "Instalando Docker..."
-    apt-get install -y docker-ce docker-ce-cli containerd.io
+print_message "Installing Docker..."
+apt-get install -y docker-ce docker-ce-cli containerd.io
 
-    if [ $? -eq 0 ]; then
-        print_success "Docker instalado com sucesso!"
-        
-        print_message "Iniciando e habilitando serviço do Docker..."
-        systemctl start docker
-        systemctl enable docker
-        
-        # Adiciona usuário atual ao grupo docker (se não for root)
-        if [[ $EUID -ne 0 ]]; then
-            print_message "Adicionando usuário $SUDO_USER ao grupo docker..."
-            usermod -aG docker $SUDO_USER
-            print_warning "Reinicie a sessão ou execute 'newgrp docker' para que as alterações tenham efeito"
-        fi
-        
-    else
-        print_error "Falha na instalação do Docker"
-        exit 1
-    fi
+if [ $? -eq 0 ]; then
+print_success "Docker installed successfully!"
+print_message "Starting and enabling Docker service..."
+systemctl start docker
+systemctl enable docker
+
+# Add current user to docker group (if not root)
+if [[ $EUID -ne 0 ]]; then
+print_message "Adding user $SUDO_USER to docker group..."
+usermod -aG docker $SUDO_USER
+print_warning "Please restart your session or run 'newgrp docker' for changes to take effect"
+fi
+else
+print_error "Docker installation failed"
+exit 1
+fi
 }
 
-# Função para configurar Git
+# Function to configure Git
 configure_git() {
-    print_message "Configurando Git..."
-    
-    # Verifica se o Git está instalado, se não, instala
-    if ! command -v git &> /dev/null; then
-        print_message "Git não encontrado. Instalando..."
-        apt-get install -y git
-    fi
+print_message "Configuring Git..."
 
-    # Solicita dados do usuário
-    echo
-    print_message "Configuração do Git"
-    read -p "Digite seu nome de usuário do Git: " git_username
-    read -p "Digite seu email do Git: " git_email
+# Check if Git is installed, if not, install it
+if ! command -v git &> /dev/null; then
+print_message "Git not found. Installing..."
+apt-get install -y git
+fi
 
-    # Configura usuário e email global
-    git config --global user.name "$git_username"
-    git config --global user.email "$git_email"
+# Request user data
+echo
+print_message "Git Configuration"
+read -p "Enter your Git username: " git_username
+read -p "Enter your Git email: " git_email
 
-    # Configurações adicionais úteis
-    git config --global init.defaultBranch main
-    git config --global pull.rebase false
+# Configure user and email globally
+git config --global user.name "$git_username"
+git config --global user.email "$git_email"
 
-    print_success "Git configurado com sucesso!"
-    echo
-    print_message "Configurações do Git:"
-    git config --global --list
-    echo
+# Additional useful configurations
+git config --global init.defaultBranch main
+git config --global pull.rebase false
+
+print_success "Git configured successfully!"
+echo
+print_message "Git settings:"
+git config --global --list
+echo
 }
 
-# Função para instalar Nginx
+# Function to install Nginx
 install_nginx() {
-    print_message "Verificando se o Nginx já está instalado..."
-    
-    if command -v nginx &> /dev/null; then
-        print_warning "Nginx já está instalado. Pulando instalação..."
-        return 0
-    fi
+print_message "Checking if Nginx is already installed..."
+if command -v nginx &> /dev/null; then
+print_warning "Nginx is already installed. Skipping installation..."
+return 0
+fi
 
-    print_message "Instalando Nginx..."
-    apt-get install -y nginx
+print_message "Installing Nginx..."
+apt-get install -y nginx
 
-    if [ $? -eq 0 ]; then
-        print_success "Nginx instalado com sucesso!"
-        
-        print_message "Iniciando e habilitando serviço do Nginx..."
-        systemctl start nginx
-        systemctl enable nginx
-        
-        # Verifica status do serviço
-        if systemctl is-active --quiet nginx; then
-            print_success "Serviço Nginx está rodando!"
-        else
-            print_error "Serviço Nginx não está rodando"
-        fi
-    else
-        print_error "Falha na instalação do Nginx"
-        exit 1
-    fi
+if [ $? -eq 0 ]; then
+print_success "Nginx installed successfully!"
+print_message "Starting and enabling Nginx service..."
+systemctl start nginx
+systemctl enable nginx
+
+# Check service status
+if systemctl is-active --quiet nginx; then
+print_success "Nginx service is running!"
+else
+print_error "Nginx service is not running"
+fi
+else
+print_error "Nginx installation failed"
+exit 1
+fi
 }
 
-# Função ajustada para instalação com prompt de porta
+# Adjusted function for installation with port prompt
 quick_install_portainer() {
-    local PORT
-    
-    # Solicitar porta via prompt se não foi passada como parâmetro
-    if [ -z "$1" ]; then
-        read -p "Digite a porta para o Portainer [Padrão-9000]: " PORT
-        PORT=${PORT:-9000}
-    else
-        PORT=$1
-    fi
-    
-    # Validar se a porta é um número válido
-    if ! [[ "$PORT" =~ ^[0-9]+$ ]] || [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then
-        echo "Erro: Porta inválida! Deve ser um número entre 1 e 65535."
-        return 1
-    fi
-    
-    # Verificar se a porta já está em uso
-    if netstat -tuln | grep ":$PORT " > /dev/null; then
-        echo "Erro: Porta $PORT já está em uso!"
-        read -p "Deseja tentar outra porta? (s/N): " try_again
-        if [[ $try_again =~ ^[Ss]$ ]]; then
-            quick_install_portainer  # Chama recursivamente sem parâmetro
-            return
-        else
-            return 1
-        fi
-    fi
-    
-    echo "Instalando Portainer CE na porta $PORT..."
-    
-    # Verificar se Docker está instalado
-    if ! command -v docker &> /dev/null; then
-        echo "Erro: Docker não encontrado. Instale o Docker primeiro."
-        return 1
-    fi
-    
-    # Verificar se serviço Docker está rodando
-    if ! systemctl is-active --quiet docker; then
-        echo "Iniciando serviço Docker..."
-        sudo systemctl start docker
-    fi
-    
-    # Criar diretório de dados
-    sudo mkdir -p /opt/portainer
-    
-    # Parar container existente se houver
-    if docker ps -a | grep -q portainer; then
-        echo "Parando container Portainer existente..."
-        sudo docker stop portainer > /dev/null 2>&1
-        sudo docker rm portainer > /dev/null 2>&1
-    fi
-    
-    # Executar container
-    echo "Iniciando container Portainer CE..."
-    sudo docker run -d \
-        --name portainer \
-        --restart always \
-        -p $PORT:9000 \
-        -v /var/run/docker.sock:/var/run/docker.sock \
-        -v /opt/portainer:/data \
-        portainer/portainer-ce:latest
-    
-    if [ $? -eq 0 ]; then
-        local IP_ADDRESS
-        IP_ADDRESS=$(hostname -I | awk '{print $1}')
-        echo "✅ Portainer CE instalado com sucesso!"
-        echo "🌐 Acesse: http://$IP_ADDRESS:$PORT"
-        echo "💻 Ou localmente: http://localhost:$PORT"
-        
-        # Aguardar inicialização
-        echo "⏳ Aguardando inicialização..."
-        sleep 5
-        
-        # Verificar status
-        if docker ps | grep -q portainer; then
-            echo "✅ Container está rodando corretamente"
-        else
-            echo "⚠️ Container pode estar com problemas. Verifique com: docker logs portainer"
-        fi
-    else
-        echo "❌ Erro ao instalar Portainer CE"
-        return 1
-    fi
+local PORT
+
+# Request port via prompt if not passed as parameter
+if [ -z "$1" ]; then
+read -p "Enter port for Portainer [Default-9000]: " PORT
+PORT=${PORT:-9000}
+else
+PORT=$1
+fi
+
+# Validate if port is a valid number
+if ! [[ "$PORT" =~ ^[0-9]+$ ]] || [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then
+echo "Error: Invalid port! Must be a number between 1 and 65535."
+return 1
+fi
+
+# Check if port is already in use
+if netstat -tuln | grep ":$PORT " > /dev/null; then
+echo "Error: Port $PORT is already in use!"
+read -p "Do you want to try another port? (y/N): " try_again
+if [[ $try_again =~ ^[Yy]$ ]]; then
+quick_install_portainer  # Calls recursively without parameter
+return
+else
+return 1
+fi
+fi
+
+echo "Installing Portainer CE on port $PORT..."
+
+# Check if Docker is installed
+if ! command -v docker &> /dev/null; then
+echo "Error: Docker not found. Install Docker first."
+return 1
+fi
+
+# Check if Docker service is running
+if ! systemctl is-active --quiet docker; then
+echo "Starting Docker service..."
+sudo systemctl start docker
+fi
+
+# Create data directory
+sudo mkdir -p /opt/portainer
+
+# Stop existing container if any
+if docker ps -a | grep -q portainer; then
+echo "Stopping existing Portainer container..."
+sudo docker stop portainer > /dev/null 2>&1
+sudo docker rm portainer > /dev/null 2>&1
+fi
+
+# Run container
+echo "Starting Portainer CE container..."
+sudo docker run -d \
+--name portainer \
+--restart always \
+-p $PORT:9000 \
+-v /var/run/docker.sock:/var/run/docker.sock \
+-v /opt/portainer:/data \
+portainer/portainer-ce:latest
+
+if [ $? -eq 0 ]; then
+local IP_ADDRESS
+IP_ADDRESS=$(hostname -I | awk '{print $1}')
+echo "✅ Portainer CE installed successfully!"
+echo "🌐 Access: http://$IP_ADDRESS:$PORT"
+echo "💻 Or locally: http://localhost:$PORT"
+
+# Wait for initialization
+echo "⏳ Waiting for initialization..."
+sleep 5
+
+# Check status
+if docker ps | grep -q portainer; then
+echo "✅ Container is running correctly"
+else
+echo "⚠️ Container may have issues. Check with: docker logs portainer"
+fi
+else
+echo "❌ Error installing Portainer CE"
+return 1
+fi
 }
 
-# Versão alternativa mais interativa
+# More interactive alternative version
 interactive_install_portainer() {
-    echo "=== INSTALAÇÃO INTERATIVA DO PORTAINER ==="
-    
-    # Solicitar porta com validação
-    while true; do
-        read -p "Digite a porta para o Portainer [9000]: " PORT
-        PORT=${PORT:-9000}
-        
-        # Validar porta
-        if ! [[ "$PORT" =~ ^[0-9]+$ ]] || [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then
-            echo "❌ Porta inválida! Deve ser um número entre 1 e 65535."
-            continue
-        fi
-        
-        # Verificar se porta está disponível
-        if netstat -tuln | grep ":$PORT " > /dev/null; then
-            echo "❌ Porta $PORT já está em uso!"
-            read -p "Deseja tentar outra porta? (s/N): " try_again
-            if [[ ! $try_again =~ ^[Ss]$ ]]; then
-                return 1
-            fi
-        else
-            break
-        fi
-    done
-    
-    # Chamar a função de instalação com a porta escolhida
-    quick_install_portainer "$PORT"
+echo "=== INTERACTIVE PORTAINER INSTALLATION ==="
+
+# Request port with validation
+while true; do
+read -p "Enter port for Portainer [9000]: " PORT
+PORT=${PORT:-9000}
+
+# Validate port
+if ! [[ "$PORT" =~ ^[0-9]+$ ]] || [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then
+echo "❌ Invalid port! Must be a number between 1 and 65535."
+continue
+fi
+
+# Check if port is available
+if netstat -tuln | grep ":$PORT " > /dev/null; then
+echo "❌ Port $PORT is already in use!"
+read -p "Do you want to try another port? (y/N): " try_again
+if [[ ! $try_again =~ ^[Yy]$ ]]; then
+return 1
+fi
+else
+break
+fi
+done
+
+# Call installation function with chosen port
+quick_install_portainer "$PORT"
 }
 
-# Função para mostrar resumo da instalação
+# Function to show installation summary
 show_summary() {
-    echo
-    print_success "=== INSTALAÇÃO CONCLUÍDA ==="
-    echo
-    print_message "Resumo da instalação:"
-    
-    # Verifica Docker
-    if command -v docker &> /dev/null; then
-        docker_version=$(docker --version | cut -d' ' -f3 | tr -d ',')
-        print_success "✓ Docker: $docker_version"
-    else
-        print_error "✗ Docker: Não instalado"
-    fi
+echo
+print_success "=== INSTALLATION COMPLETED ==="
+echo
+print_message "Installation summary:"
 
-    # Verifica Git
-    if command -v git &> /dev/null; then
-        git_version=$(git --version | cut -d' ' -f3)
-        print_success "✓ Git: $git_version"
-        print_message "  Usuário: $(git config --global user.name)"
-        print_message "  Email: $(git config --global user.email)"
-    else
-        print_error "✗ Git: Não instalado"
-    fi
+# Check Docker
+if command -v docker &> /dev/null; then
+docker_version=$(docker --version | cut -d' ' -f3 | tr -d ',')
+print_success "✓ Docker: $docker_version"
+else
+print_error "✗ Docker: Not installed"
+fi
 
-    # Verifica Nginx
-    if command -v nginx &> /dev/null; then
-        nginx_version=$(nginx -v 2>&1 | cut -d'/' -f2)
-        print_success "✓ Nginx: $nginx_version"
-        
-        # Verifica status do serviço
-        if systemctl is-active --quiet nginx; then
-            print_success "  Status: Rodando"
-            print_message "  URL: http://$(curl -s ifconfig.me) ou http://localhost"
-        else
-            print_warning "  Status: Parado"
-        fi
-    else
-        print_error "✗ Nginx: Não instalado"
-    fi
-    echo
+# Check Git
+if command -v git &> /dev/null; then
+git_version=$(git --version | cut -d' ' -f3)
+print_success "✓ Git: $git_version"
+print_message "  User: $(git config --global user.name)"
+print_message "  Email: $(git config --global user.email)"
+else
+print_error "✗ Git: Not installed"
+fi
+
+# Check Nginx
+if command -v nginx &> /dev/null; then
+nginx_version=$(nginx -v 2>&1 | cut -d'/' -f2)
+print_success "✓ Nginx: $nginx_version"
+
+# Check service status
+if systemctl is-active --quiet nginx; then
+print_success "  Status: Running"
+print_message "  URL: http://$(curl -s ifconfig.me) or http://localhost"
+else
+print_warning "  Status: Stopped"
+fi
+else
+print_error "✗ Nginx: Not installed"
+fi
+echo
 }
 
 all_inclusive() {
-    # Atualizar pacotes
-    update_packages
-    echo
+# Update packages
+update_packages
+echo
 
-    # Instalar Docker
-    install_docker
-    echo
+# Install Docker
+install_docker
+echo
 
-    # Configurar Git
-    configure_git
-    echo
+# Configure Git
+configure_git
+echo
 
-    # Instalar Nginx
-    install_nginx
-    echo
+# Install Nginx
+install_nginx
+echo
 
-    # Mostrar resumo
-    show_summary
+# Show summary
+show_summary
 }
 
-
-# Função para configurar serviço Nginx com DNS
+# Function to configure Nginx service with DNS
 configure_nginx_service() {
-    local DOMAIN
-    local PORT
-    local SERVICE_NAME
-    local CONFIG_DIR="/etc/nginx/sites-available"
-    local ENABLED_DIR="/etc/nginx/sites-enabled"
-    local SSL_ENABLED=false
+local DOMAIN
+local PORT
+local SERVICE_NAME
+local CONFIG_DIR="/etc/nginx/sites-available"
+local ENABLED_DIR="/etc/nginx/sites-enabled"
+local SSL_ENABLED=false
 
-    echo "=== CONFIGURADOR DE SERVIÇO NGINX ==="
+echo "=== NGINX SERVICE CONFIGURATOR ==="
 
-    # Verificar se Nginx está instalado
-    if ! command -v nginx &> /dev/null; then
-        echo "❌ Nginx não encontrado. Instale primeiro: sudo apt install nginx"
-        return 1
-    fi
+# Check if Nginx is installed
+if ! command -v nginx &> /dev/null; then
+echo "❌ Nginx not found. Install first: sudo apt install nginx"
+return 1
+fi
 
-    # Solicitar informações do serviço
-    read -p "🔤 Digite o nome do serviço (ex: meuservico): " SERVICE_NAME
-    SERVICE_NAME=$(echo "$SERVICE_NAME" | tr ' ' '-' | tr '[:upper:]' '[:lower:]')
+# Request service information
+read -p "🔤 Enter service name (ex: myservice): " SERVICE_NAME
+SERVICE_NAME=$(echo "$SERVICE_NAME" | tr ' ' '-' | tr '[:upper:]' '[:lower:]')
 
-    read -p "🌐 Digite o domínio (ex: app.meudominio.com): " DOMAIN
-    DOMAIN=$(echo "$DOMAIN" | tr '[:upper:]' '[:lower:]')
+read -p "🌐 Enter domain (ex: app.mydomain.com): " DOMAIN
+DOMAIN=$(echo "$DOMAIN" | tr '[:upper:]' '[:lower:]')
 
-    read -p "🔢 Digite a porta do serviço (ex: 3000, 8080): " PORT
+read -p "🔢 Enter service port (ex: 3000, 8080): " PORT
 
-    # Validar porta
-    if ! [[ "$PORT" =~ ^[0-9]+$ ]] || [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then
-        echo "❌ Porta inválida!"
-        return 1
-    fi
+# Validate port
+if ! [[ "$PORT" =~ ^[0-9]+$ ]] || [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then
+echo "❌ Invalid port!"
+return 1
+fi
 
-    # Perguntar sobre SSL
-    read -p "🔒 Habilitar HTTPS/SSL? (s/N): " enable_ssl
-    if [[ $enable_ssl =~ ^[Ss]$ ]]; then
-        SSL_ENABLED=true
-    fi
+# Ask about SSL
+read -p "🔒 Enable HTTPS/SSL? (y/N): " enable_ssl
+if [[ $enable_ssl =~ ^[Yy]$ ]]; then
+SSL_ENABLED=true
+fi
 
-    # Criar configuração do Nginx
-    create_nginx_config "$SERVICE_NAME" "$DOMAIN" "$PORT" "$SSL_ENABLED"
+# Create Nginx configuration
+create_nginx_config "$SERVICE_NAME" "$DOMAIN" "$PORT" "$SSL_ENABLED"
 
-    # Configurar DNS local (opcional)
-    setup_local_dns "$DOMAIN"
+# Configure local DNS (optional)
+setup_local_dns "$DOMAIN"
 
-    # Testar e recarregar Nginx
-    test_and_reload_nginx
+# Test and reload Nginx
+test_and_reload_nginx
 }
 
-# Função para criar configuração do Nginx
+# Function to create Nginx configuration
 create_nginx_config() {
-    local SERVICE_NAME=$1
-    local DOMAIN=$2
-    local PORT=$3
-    local SSL_ENABLED=$4
-    local CONFIG_FILE="/etc/nginx/sites-available/$SERVICE_NAME"
-    local CERT_DIR="/etc/nginx/ssl/$SERVICE_NAME"
+local SERVICE_NAME=$1
+local DOMAIN=$2
+local PORT=$3
+local SSL_ENABLED=$4
+local CONFIG_FILE="/etc/nginx/sites-available/$SERVICE_NAME"
+local CERT_DIR="/etc/nginx/ssl/$SERVICE_NAME"
 
-    echo "📁 Criando configuração Nginx para $DOMAIN..."
+echo "📁 Creating Nginx configuration for $DOMAIN..."
 
-    # Criar diretório SSL se necessário
-    if [ "$SSL_ENABLED" = true ]; then
-        sudo mkdir -p "$CERT_DIR"
-        echo "📝 Criando certificado auto-assinado (para desenvolvimento)..."
-        
-        # Criar certificado auto-assinado
-        sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-            -keyout "$CERT_DIR/$SERVICE_NAME.key" \
-            -out "$CERT_DIR/$SERVICE_NAME.crt" \
-            -subj "/C=BR/ST=Estado/L=Cidade/O=Organizacao/CN=$DOMAIN"
-    fi
+# Create SSL directory if necessary
+if [ "$SSL_ENABLED" = true ]; then
+sudo mkdir -p "$CERT_DIR"
+echo "📝 Creating self-signed certificate (for development)..."
 
-    # Criar arquivo de configuração
-    sudo tee "$CONFIG_FILE" > /dev/null << EOF
-# Configuração para $SERVICE_NAME
-# Domínio: $DOMAIN
-# Porto do serviço: $PORT
+# Create self-signed certificate
+sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+-keyout "$CERT_DIR/$SERVICE_NAME.key" \
+-out "$CERT_DIR/$SERVICE_NAME.crt" \
+-subj "/C=US/ST=State/L=City/O=Organization/CN=$DOMAIN"
+fi
+
+# Create configuration file
+sudo tee "$CONFIG_FILE" > /dev/null << EOF
+# Configuration for $SERVICE_NAME
+# Domain: $DOMAIN
+# Service port: $PORT
 
 server {
     listen 80;
@@ -435,7 +426,7 @@ echo "
 server {
     listen 443 ssl http2;
     server_name $DOMAIN;
-
+    
     ssl_certificate $CERT_DIR/$SERVICE_NAME.crt;
     ssl_certificate_key $CERT_DIR/$SERVICE_NAME.key;
     ssl_protocols TLSv1.2 TLSv1.3;
@@ -457,16 +448,16 @@ server {
         proxy_read_timeout          60;
     }
 
-    # Configurações de segurança
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header Referrer-Policy "no-referrer-when-downgrade" always;
-    
-    # Configurações de cache
+    # Security configurations
+    add_header X-Frame-Options \"SAMEORIGIN\" always;
+    add_header X-XSS-Protection \"1; mode=block\" always;
+    add_header X-Content-Type-Options \"nosniff\" always;
+    add_header Referrer-Policy \"no-referrer-when-downgrade\" always;
+
+    # Cache configurations
     location ~* \.(jpg|jpeg|png|gif|ico|css|js)$ {
         expires 1y;
-        add_header Cache-Control "public, immutable";
+        add_header Cache-Control \"public, immutable\";
     }
 }"
 else
@@ -494,192 +485,187 @@ server {
 fi)
 EOF
 
-    # Habilitar site
-    sudo ln -sf "$CONFIG_FILE" "/etc/nginx/sites-enabled/$SERVICE_NAME"
-    echo "✅ Configuração criada: $CONFIG_FILE"
+# Enable site
+sudo ln -sf "$CONFIG_FILE" "/etc/nginx/sites-enabled/$SERVICE_NAME"
+echo "✅ Configuration created: $CONFIG_FILE"
 }
 
-# Função para configurar DNS local
+# Function to configure local DNS
 setup_local_dns() {
-    local DOMAIN=$1
-    local HOSTS_FILE="/etc/hosts"
-    
-    read -p "🌍 Configurar DNS local em /etc/hosts? (s/N): " setup_dns
-    if [[ $setup_dns =~ ^[Ss]$ ]]; then
-        
-        # Obter IP local
-        local IP_LOCAL
-        IP_LOCAL=$(hostname -I | awk '{print $1}')
-        
-        # Verificar se já existe entrada
-        if ! grep -q "$DOMAIN" "$HOSTS_FILE"; then
-            echo "📝 Adicionando $DOMAIN ao /etc/hosts..."
-            echo "# Configurado automaticamente - $SERVICE_NAME" | sudo tee -a "$HOSTS_FILE" > /dev/null
-            echo "$IP_LOCAL $DOMAIN" | sudo tee -a "$HOSTS_FILE" > /dev/null
-            echo "✅ DNS local configurado: $DOMAIN -> $IP_LOCAL"
-        else
-            echo "⚠️  Domínio $DOMAIN já existe no /etc/hosts"
-        fi
-    fi
+local DOMAIN=$1
+local HOSTS_FILE="/etc/hosts"
+
+read -p "🌍 Configure local DNS in /etc/hosts? (y/N): " setup_dns
+if [[ $setup_dns =~ ^[Yy]$ ]]; then
+# Get local IP
+local IP_LOCAL
+IP_LOCAL=$(hostname -I | awk '{print $1}')
+
+# Check if entry already exists
+if ! grep -q "$DOMAIN" "$HOSTS_FILE"; then
+echo "📝 Adding $DOMAIN to /etc/hosts..."
+echo "# Automatically configured - $SERVICE_NAME" | sudo tee -a "$HOSTS_FILE" > /dev/null
+echo "$IP_LOCAL $DOMAIN" | sudo tee -a "$HOSTS_FILE" > /dev/null
+echo "✅ Local DNS configured: $DOMAIN -> $IP_LOCAL"
+else
+echo "⚠️  Domain $DOMAIN already exists in /etc/hosts"
+fi
+fi
 }
 
-# Função para testar e recarregar Nginx
+# Function to test and reload Nginx
 test_and_reload_nginx() {
-    echo "🔍 Testando configuração do Nginx..."
-    
-    if sudo nginx -t; then
-        echo "✅ Configuração do Nginx está válida"
-        echo "🔄 Recarregando Nginx..."
-        sudo systemctl reload nginx
-        echo "✅ Nginx recarregado com sucesso!"
-        
-        # Mostrar resumo
-        show_nginx_summary
-    else
-        echo "❌ Erro na configuração do Nginx. Verifique os arquivos."
-        return 1
-    fi
+echo "🔍 Testing Nginx configuration..."
+if sudo nginx -t; then
+echo "✅ Nginx configuration is valid"
+echo "🔄 Reloading Nginx..."
+sudo systemctl reload nginx
+echo "✅ Nginx reloaded successfully!"
+
+# Show summary
+show_nginx_summary
+else
+echo "❌ Error in Nginx configuration. Check the files."
+return 1
+fi
 }
 
-# Função para listar serviços configurados
+# Function to list configured services
 list_nginx_services() {
-    echo "=== SERVIÇOS NGINX CONFIGURADOS ==="
-    
-    if [ -d "/etc/nginx/sites-enabled" ]; then
-        for config in /etc/nginx/sites-enabled/*; do
-            if [ -f "$config" ]; then
-                local service_name=$(basename "$config")
-                local domain=$(grep -m1 "server_name" "$config" | awk '{print $2}' | tr -d ';')
-                local port=$(grep -m1 "proxy_pass" "$config" | grep -oE '[0-9]+')
-                echo "🔧 $service_name | Domínio: $domain | Porta: $port"
-            fi
-        done
-    else
-        echo "❌ Nenhum serviço configurado"
-    fi
+echo "=== CONFIGURED NGINX SERVICES ==="
+if [ -d "/etc/nginx/sites-enabled" ]; then
+for config in /etc/nginx/sites-enabled/*; do
+if [ -f "$config" ]; then
+local service_name=$(basename "$config")
+local domain=$(grep -m1 "server_name" "$config" | awk '{print $2}' | tr -d ';')
+local port=$(grep -m1 "proxy_pass" "$config" | grep -oE '[0-9]+')
+echo "🔧 $service_name | Domain: $domain | Port: $port"
+fi
+done
+else
+echo "❌ No services configured"
+fi
 }
 
-# Função para remover serviço
+# Function to remove service
 remove_nginx_service() {
-    echo "=== REMOVER SERVIÇO NGINX ==="
-    
-    list_nginx_services
-    
-    read -p "🔤 Digite o nome do serviço para remover: " SERVICE_NAME
-    
-    local CONFIG_FILE="/etc/nginx/sites-available/$SERVICE_NAME"
-    local ENABLED_FILE="/etc/nginx/sites-enabled/$SERVICE_NAME"
-    
-    if [ -f "$ENABLED_FILE" ]; then
-        sudo rm -f "$ENABLED_FILE"
-        echo "✅ Serviço desabilitado"
-    fi
-    
-    if [ -f "$CONFIG_FILE" ]; then
-        read -p "🗑️  Remover arquivo de configuração também? (s/N): " remove_config
-        if [[ $remove_config =~ ^[Ss]$ ]]; then
-            sudo rm -f "$CONFIG_FILE"
-            echo "✅ Arquivo de configuração removido"
-        fi
-    fi
-    
-    sudo systemctl reload nginx
-    echo "✅ Nginx recarregado"
+echo "=== REMOVE NGINX SERVICE ==="
+list_nginx_services
+read -p "🔤 Enter service name to remove: " SERVICE_NAME
+
+local CONFIG_FILE="/etc/nginx/sites-available/$SERVICE_NAME"
+local ENABLED_FILE="/etc/nginx/sites-enabled/$SERVICE_NAME"
+
+if [ -f "$ENABLED_FILE" ]; then
+sudo rm -f "$ENABLED_FILE"
+echo "✅ Service disabled"
+fi
+
+if [ -f "$CONFIG_FILE" ]; then
+read -p "🗑️  Remove configuration file too? (y/N): " remove_config
+if [[ $remove_config =~ ^[Yy]$ ]]; then
+sudo rm -f "$CONFIG_FILE"
+echo "✅ Configuration file removed"
+fi
+fi
+
+sudo systemctl reload nginx
+echo "✅ Nginx reloaded"
 }
 
-# Função para mostrar resumo da configuração
+# Function to show configuration summary
 show_nginx_summary() {
-    local SERVICE_NAME=$1
-    local DOMAIN=$2
-    local PORT=$3
-    local SSL_ENABLED=$4
-    
-    echo ""
-    echo "🎉 CONFIGURAÇÃO CONCLUÍDA!"
-    echo "=========================="
-    echo "📋 Serviço: $SERVICE_NAME"
-    echo "🌐 Domínio: $DOMAIN"
-    echo "🔢 Porta do serviço: $PORT"
-    echo "🔒 SSL: $([ "$SSL_ENABLED" = true ] && echo "Habilitado" || echo "Desabilitado")"
-    echo ""
-    echo "🔗 URLs de acesso:"
-    if [ "$SSL_ENABLED" = true ]; then
-        echo "   HTTPS: https://$DOMAIN"
-        echo "   HTTP: http://$DOMAIN (redireciona para HTTPS)"
-    else
-        echo "   HTTP: http://$DOMAIN"
-    fi
-    echo ""
-    echo "📁 Arquivos de configuração:"
-    echo "   Config: /etc/nginx/sites-available/$SERVICE_NAME"
-    echo "   Enabled: /etc/nginx/sites-enabled/$SERVICE_NAME"
-    if [ "$SSL_ENABLED" = true ]; then
-        echo "   Certificado: /etc/nginx/ssl/$SERVICE_NAME/"
-    fi
-    echo ""
-    echo "📊 Logs:"
-    echo "   Access: /var/log/nginx/${SERVICE_NAME}_access.log"
-    echo "   Error: /var/log/nginx/${SERVICE_NAME}_error.log"
-    echo ""
+local SERVICE_NAME=$1
+local DOMAIN=$2
+local PORT=$3
+local SSL_ENABLED=$4
+
+echo ""
+echo "🎉 CONFIGURATION COMPLETED!"
+echo "=========================="
+echo "📋 Service: $SERVICE_NAME"
+echo "🌐 Domain: $DOMAIN"
+echo "🔢 Service port: $PORT"
+echo "🔒 SSL: $([ "$SSL_ENABLED" = true ] && echo "Enabled" || echo "Disabled")"
+echo ""
+echo "🔗 Access URLs:"
+if [ "$SSL_ENABLED" = true ]; then
+echo "   HTTPS: https://$DOMAIN"
+echo "   HTTP: http://$DOMAIN (redirects to HTTPS)"
+else
+echo "   HTTP: http://$DOMAIN"
+fi
+echo ""
+echo "📁 Configuration files:"
+echo "   Config: /etc/nginx/sites-available/$SERVICE_NAME"
+echo "   Enabled: /etc/nginx/sites-enabled/$SERVICE_NAME"
+if [ "$SSL_ENABLED" = true ]; then
+echo "   Certificate: /etc/nginx/ssl/$SERVICE_NAME/"
+fi
+echo ""
+echo "📊 Logs:"
+echo "   Access: /var/log/nginx/${SERVICE_NAME}_access.log"
+echo "   Error: /var/log/nginx/${SERVICE_NAME}_error.log"
+echo ""
 }
 
-# Menu interativo seviços nginx
+# Interactive nginx services menu
 nginx_service_menu() {
-    while true; do
-        echo ""
-        echo "=== MENU SERVIÇOS NGINX ==="
-        echo "1. Configurar novo serviço"
-        echo "2. Listar serviços"
-        echo "3. Remover serviço"
-        echo "4. Voltar para o menu principal"
-        echo "5. Sair"
-        read -p "Escolha: " choice
-        
-        case $choice in
-            1) configure_nginx_service ;;
-            2) list_nginx_services ;;
-            3) remove_nginx_service ;;
-            4) setup_menu ;;
-            5) break ;;
-            *) echo "❌ Opção inválida" ;;
-        esac
-    done
+while true; do
+echo ""
+echo "=== NGINX SERVICES MENU ==="
+echo "1. Configure new service"
+echo "2. List services"
+echo "3. Remove service"
+echo "4. Back to main menu"
+echo "5. Exit"
+read -p "Choose: " choice
+
+case $choice in
+1) configure_nginx_service ;;
+2) list_nginx_services ;;
+3) remove_nginx_service ;;
+4) setup_menu ;;
+5) break ;;
+*) echo "❌ Invalid option" ;;
+esac
+done
 }
 
 setup_menu() {
-    while true; do
-        echo
-        echo "=== Fala meu mano, bão? O que você quer? ==="
-        echo "1. Configurar Domínio|DNS "
-        echo "2. Completão:"
-        echo "   ├── Atualização do sistema"
-        echo "   ├── Instalação Docker"
-        echo "   ├── Configurar git"
-        echo "   └── Instalar Nginx"
-        echo "3. Sair"
-        read -p "Escolha uma opção: " choice
-        
-        case $choice in
-            1) nginx_service_menu;; 
-            2) all_inclusive;;
-            3) break ;;
-            *) print_error "Opção inválida" ;;
-        esac
-    done
+while true; do
+echo
+echo "=== Hey buddy, what's up? What do you need? ==="
+echo "1. Configure Domain|DNS"
+echo "2. Complete setup:"
+echo "   ├── System update"
+echo "   ├── Docker installation"
+echo "   ├── Git configuration"
+echo "   └── Nginx installation"
+echo "3. Exit"
+read -p "Choose an option: " choice
+
+case $choice in
+1) nginx_service_menu;;
+2) all_inclusive;;
+3) break ;;
+*) print_error "Invalid option" ;;
+esac
+done
 }
 
-# Função principal
+# Main function
 main() {
-    clear
-    print_message "Iniciando script..."
-    echo
+clear
+print_message "Starting script..."
+echo
 
-    # Verifica se é root
-    check_root
+# Check if running as root
+check_root
 
-    # setup_menu
-    setup_menu
+# setup_menu
+setup_menu
 }
 
-# Executa a função principal
+# Execute main function
 main
