@@ -41,24 +41,18 @@ This repository provides production-ready automation scripts for Linux cloud ser
 
 ### Installation
 
-1. **Clone the repository**:
-```bash
-git clone https://github.com/your-username/linux-cloud-automation.git
-cd linux-cloud-automation
-```
-
-2. **Make scripts executable**:
+1. **Make scripts executable**:
 ```bash
 chmod +x *.sh
 ```
 
-3. **Run the desired script**:
+2. **Run the desired script**:
 ```bash
 # For complete server setup
-sudo ./ubuntu-server-setup.sh
+sudo ./setup_environment.sh
 
 # For user management
-sudo ./super-user-creator.sh
+sudo ./create_super_user.sh
 ```
 
 ## 📖 Usage Examples
