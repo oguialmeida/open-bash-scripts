@@ -2,11 +2,11 @@
 
 A comprehensive collection of Bash scripts designed to automate the setup and configuration of Linux services and environments in cloud infrastructure.
 
-## 📋 Overview
+## Overview
 
 This repository provides production-ready automation scripts for Linux cloud servers, focusing on rapid deployment, security best practices, and standardized configurations. Whether you're setting up a single server or managing multiple cloud instances, these scripts will help you achieve consistent and reliable deployments.
 
-## 🚀 Features
+## Features
 
 ### Server Setup & Configuration
 - **Complete Ubuntu Server Setup**: Automated system updates, Docker installation, Git configuration, and Nginx deployment
@@ -24,7 +24,7 @@ This repository provides production-ready automation scripts for Linux cloud ser
 - **Container Support**: Docker integration and container management
 - **Service Discovery**: Automated service detection and configuration
 
-## 🛠️ Scripts Overview
+## Scripts Overview
 
 **Use Cases**:
 - Team member onboarding
@@ -32,7 +32,7 @@ This repository provides production-ready automation scripts for Linux cloud ser
 - Administrative access management
 - User privilege auditing
 
-## 🚦 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Ubuntu 18.04+ or compatible Linux distribution
@@ -55,7 +55,7 @@ sudo ./setup_environment.sh
 sudo ./create_super_user.sh
 ```
 
-## 📖 Usage Examples
+## Usage Examples
 
 ### Complete Server Setup
 ```bash
@@ -93,7 +93,7 @@ The scripts provide interactive configuration for:
 - **User Groups**: Customize default group assignments for new users
 - **Security Policies**: Adjust password complexity requirements
 
-## 🔒 Security Features
+## Security Features
 
 ### User Security
 - **Password Validation**: Enforced complexity requirements
@@ -107,15 +107,15 @@ The scripts provide interactive configuration for:
 - **Secure Defaults**: Production-ready security configurations
 - **Certificate Management**: Automated certificate generation
 
-## 🌐 Cloud Platform Compatibility
+## Cloud Platform Compatibility
 
 ### Supported Platforms
-- ✅ **AWS EC2** (Amazon Linux, Ubuntu)
-- ✅ **Google Cloud Platform** (Compute Engine)
-- ✅ **Microsoft Azure** (Virtual Machines)
-- ✅ **DigitalOcean** (Droplets)
-- ✅ **Linode** (Compute Instances)
-- ✅ **Vultr** (Cloud Compute)
+-  **AWS EC2** (Amazon Linux, Ubuntu)
+-  **Google Cloud Platform** (Compute Engine)
+-  **Microsoft Azure** (Virtual Machines)
+-  **DigitalOcean** (Droplets)
+-  **Linode** (Compute Instances)
+-  **Vultr** (Cloud Compute)
 
 ### Cloud-Specific Features
 - **Instance Metadata**: Automatic detection of cloud environment
@@ -123,7 +123,7 @@ The scripts provide interactive configuration for:
 - **Storage Integration**: EBS, Persistent Disk compatibility
 - **Load Balancer Ready**: ALB, GCP LB, Azure LB integration
 
-## 🔄 Automation & CI/CD
+##  Automation & CI/CD
 
 ### Integration Examples
 
@@ -148,7 +148,7 @@ COPY ubuntu-server-setup.sh /setup.sh
 RUN chmod +x /setup.sh && /setup.sh
 ```
 
-## 📊 Monitoring & Logging
+## Monitoring & Logging
 
 ### Built-in Logging
 - User creation activities logged to `/var/log/user-management.log`
@@ -161,7 +161,7 @@ Scripts are compatible with:
 - **ELK Stack** (Elasticsearch, Logstash, Kibana)
 - **Cloud-native monitoring** (CloudWatch, Stackdriver)
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please follow these guidelines:
 
