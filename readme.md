@@ -171,23 +171,6 @@ We welcome contributions! Please follow these guidelines:
 4. **Add documentation** for new features
 5. **Submit a pull request**
 
-## 📝 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support & Troubleshooting
-
-### Common Issues
-
-**Permission Denied**:
-```bash
-# Ensure scripts have execute permissions
-chmod +x *.sh
-```
-
-## 🔗 Related Resources
-
-- [Docker Documentation](https://docs.docker.com/)
-- [Nginx Configuration Guide](https://nginx.org/en/docs/)
-- [Ubuntu Server Guide](https://ubuntu.com/server/docs)
-- [Let's Encrypt Documentation](https://letsencrypt.org/docs/)
